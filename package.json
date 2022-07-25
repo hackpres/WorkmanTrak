@@ -1,0 +1,24 @@
+{
+  "name": "workmantrak",
+  "version": "1.0.0",
+  "description": "WorkmanTrak is a command-line application for monitoring a companies employee database.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hackpres/WorkmanTrak.git"
+  },
+  "author": "hackpres",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/hackpres/WorkmanTrak/issues"
+  },
+  "homepage": "https://github.com/hackpres/WorkmanTrak#readme",
+  "dependencies": {
+    "console.table": "^0.10.0",
+    "inquirer": "^8.2.4",
+    "mysql2": "^2.3.3"
+  }
+}
