@@ -1,6 +1,6 @@
 const mysql = require('mysql2');
 const figlet = require('figlet');
-const init = require('../index');
+const init = require('./index');
 
 const connection = mysql.createConnection({
     host: 'localhost',
@@ -28,4 +28,25 @@ connection.connect((err) => {
     })
 });
 
-module.exports = connection;
+// Views
+
+const viewEmployees = () => {
+    connection.query(`SELECT employees.employee_id, employees.first_name, employees.last_name, roles.role_title, departments.department_name, roles.role_salary, employees.manager 
+        FROM departments 
+        JOIN roles ON departments.id = roles.department_id 
+        JOIN employees ON roles.id = employees.role_id;`,
+        function (err, res) {
+            if (err) {
+                throw err;
+            }
+            console.table(res)
+            init()
+        }
+    )
+}
+
+
+// module.exports = connection;
+module.exports = {
+    viewEmployees: viewEmployees()
+}
