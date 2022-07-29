@@ -2,6 +2,7 @@ const inquirer = require('inquirer');
 const mysql = require('mysql2');
 const figlet = require('figlet');
 const { check } = require('prettier');
+const { validate } = require('uuid');
 
 const connection = mysql.createConnection({
     host: 'localhost',
@@ -104,14 +105,15 @@ const viewEmployees = () => {
 }
 const viewRoles = () => {
     connection.query(`
-    SELECT departments.id, roles.role_title AS title, departments.department_name AS department, roles.role_salary AS salary
+    SELECT departments.id AS id, roles.role_title AS title, departments.department_name AS department, roles.role_salary AS salary
     FROM departments
     JOIN roles ON departments.id = roles.department_id
-    ORDER BY departments.id;`,
+    ORDER BY departments.id`,
     function (err, res) {
         if (err) {
             throw err;
         }
+        // const transformedRes = res.reduce((acc, {id, ...x}) => {acc[id] = x; return acc}, {});
         console.table(res);
         init();
     })
@@ -146,7 +148,7 @@ const addEmployee = () => {
                 managersFull.push(`${name} ${managersLast[i]}`)
             })
             return managersFull
-        }
+            }
             inquirer.prompt([
                 {
                     name: 'employeeFirst',
@@ -239,6 +241,77 @@ const addEmployee = () => {
             )
         }
 )};
+const addRole = () => {
+    connection.query(`
+        SELECT *
+        FROM departments
+        JOIN roles ON departments.id = roles.department_id
+        ORDER BY departments.id;`,
+        function (err, res) {
+            if (err) {
+                throw err
+            }
+            function uniqDept() {
+                    //confirms that roles don't return duplicates when 2 or more employees have the same role.
+                let deptNames = res.map(depts => depts.department_name);
+                let uniqDepts = deptNames.filter((role, i) => {
+                    return deptNames.indexOf(role) === i;
+                });
+                return uniqDepts
+            }
+            inquirer.prompt([
+                {
+                    name: `newRole`,
+                    type: `input`,
+                    message: `What is the name of the new role?`
+                },
+                {
+                    name: `salary`,
+                    type: `input`,
+                    message: `What is the salary of the new role?`,
+                    validate: (answer) => {
+                        let regex = /^[0-9]+$/;
+                        if (regex.test(answer)) {
+                            return true
+                        } else {
+                            return console.log(`Please enter a numerical value for employee salary, ommitting comma(s).`)
+                        }
+                    }
+                },
+                {
+                    name: `department`,
+                    type: `list`,
+                    message: `Which department does the new role belong to?`,
+                    choices: uniqDept()
+                }]
+                ).then(results => {
+                    connection.query(
+                        `SELECT departments.department_name, departments.id
+                        FROM departments
+                        WHERE ?`,
+                    { department_name: results.department },
+                        function(err, res) {
+                            if (err) {
+                                throw err;
+                            }
+                            let checkedID = res[0].id
+                            connection.query(`
+                                INSERT INTO roles SET ?`,
+                                {
+                                    role_title: results.newRole,
+                                    role_salary: results.salary,
+                                    department_id: checkedID
+                                }
+                            )
+                            console.log(`${results.newRole} add under department: ${results.department}`);
+                            init();
+                        }
+                    )
+                }
+            )
+        }
+    )
+}
 
 //  Updates
 
