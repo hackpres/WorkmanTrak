@@ -105,18 +105,33 @@ const viewEmployees = () => {
 }
 const viewRoles = () => {
     connection.query(`
-    SELECT departments.id AS id, roles.role_title AS title, departments.department_name AS department, roles.role_salary AS salary
-    FROM departments
-    JOIN roles ON departments.id = roles.department_id
-    ORDER BY departments.id`,
-    function (err, res) {
-        if (err) {
-            throw err;
+        SELECT departments.id AS id, roles.role_title AS title, departments.department_name AS department, roles.role_salary AS salary
+        FROM departments
+        JOIN roles ON departments.id = roles.department_id
+        ORDER BY departments.id`,
+        function (err, res) {
+            if (err) {
+                throw err;
+            }
+            // const transformedRes = res.reduce((acc, {id, ...x}) => {acc[id] = x; return acc}, {});
+            console.table(res);
+            init();
         }
-        // const transformedRes = res.reduce((acc, {id, ...x}) => {acc[id] = x; return acc}, {});
-        console.table(res);
-        init();
-    })
+    )
+}
+const viewDepts = () => {
+    connection.query(`
+        SELECT *
+        FROM departments
+        ORDER BY departments.id;`,
+        function (err, res) {
+            if (err) {
+                throw err;
+            }
+            console.table(res);
+            init();
+        }
+    )
 }
 
 // Adds
