@@ -8,7 +8,6 @@ class  Database {
         this.establishedConnection = null;
         this.connection = mysql.createConnection(config);
     }
-
     connect() {
         if (this.establishedConnection === null) {
             this.establishedConnection = this.connection.connect(function(err, res) {
@@ -23,7 +22,6 @@ class  Database {
             });
         };
     }
-
     query(sql, args) {
         return new Promise((resolve, reject) => {
             this.connection.query(sql, args, (err, rows) => {
@@ -32,7 +30,6 @@ class  Database {
             });
         });
     }
-
     dropConnection() {
         if (this.establishedConnection !== null) {
             this.connection.end();
@@ -86,6 +83,7 @@ const mainMenu = async () => {
             'View All Departments',
             'Add Department',
             'View Employees by Department',
+            'View Department Salary',
             'Exit WorkmanTrak'
         ]
     }).then(results => {
@@ -119,6 +117,9 @@ const mainMenu = async () => {
                 break;
             case 'View Employees by Department':
                 viewByDept();
+                break;
+            case 'View Department Salary':
+                viewDeptSalary();
                 break;
             case 'Exit WorkmanTrak':
                 quit();
@@ -287,9 +288,29 @@ const viewByDept = async () => {
         WHERE department_name = ?;`, [results.dept]);
         console.table(employees);
         mainMenu();
-    })
+    });
 }
-
+    //***Bonus
+const viewDeptSalary = async () => {
+    let depts = await db.query(`SELECT * FROM departments ORDER BY departments.id;`);
+    inquirer.prompt([
+        {
+            name: `dept`,
+            type: `list`,
+            message: `View employees from which department?`,
+            choices: depts.map(dept => dept.department_name)
+        }
+    ]).then( async results => {
+        let salarySUM = await db.query(`
+        SELECT SUM(role_salary)
+        FROM departments
+        JOIN roles ON departments.id = roles.department_id
+        JOIN employees ON roles.id = employees.role_id
+        WHERE department_name = ?;`, [results.dept]);
+        console.table(salarySUM);
+        mainMenu();
+    });
+}
 
 // Adds
 
@@ -370,8 +391,7 @@ const addRole = async () => {
                 if (regex.test(answer)) {
                     return true
                 } else {
-                    console.log('\x1b[31m');
-                    return console.log(`Please enter a numerical value for employee salary, ommitting comma(s).`, `\x1b[0m`)
+                    return console.log('\x1b[31m', `Please enter a numerical value for employee salary, ommitting comma(s).`, `\x1b[0m`)
                 }
             }
         },
@@ -453,11 +473,11 @@ const updateRoles = async () => {
             let roleID = roleChoices.find(role => role.role_title === results.newRole).id;
             if (results.manager != undefined) {
                 db.query(`UPDATE employees SET role_id = ?, manager_id = ? WHERE employee_id = ?`, [roleID, managerID, empID]);
-                console.log('\x1b[33m', `New role ${results.newRole} confirmed for ${results.employee}., '\x1b[0m'`);
+                console.log('\x1b[33m', `New role ${results.newRole} confirmed for ${results.employee}.`, '\x1b[0m');
                 mainMenu();
             } else {
                 db.query(`UPDATE employees SET role_id = ?, manager_id = null WHERE ?`, [roleID, empID]);
-                console.log('\x1b[33m', `New role ${results.newRole} confirmed for ${results.employee}., '\x1b[0m'`);
+                console.log('\x1b[33m', `New role ${results.newRole} confirmed for ${results.employee}.`, '\x1b[0m');
                 mainMenu();
             }
         } else {
@@ -507,11 +527,11 @@ const updateManagers = async () => {
             let roleID = roleChoices.find(role => role.role_title === results.role).id;
             if (results.manager != undefined) {
                 db.query(`UPDATE employees SET role_id = ?, manager_id = ? WHERE employee_id = ?`, [roleID, managerID, empID]);
-                console.log('\x1b[33m', `New role ${results.role} confirmed for ${results.selectedManager}., '\x1b[0m'`);
+                console.log('\x1b[33m', `New role ${results.role} confirmed for ${results.selectedManager}.`, '\x1b[0m');
                 handleUnmanaged(results.selectedManager, empID);
             } else {
                 db.query(`UPDATE employees SET role_id = ?, manager_id = null WHERE ?`, [roleID, empID]);
-                console.log('\x1b[33m', `New role ${results.role} confirmed for ${results.selectedManager}., '\x1b[0m'`);
+                console.log('\x1b[33m', `New role ${results.role} confirmed for ${results.selectedManager}.`, '\x1b[0m');
                 handleUnmanaged(results.selectedManager, empID);
             }
             
