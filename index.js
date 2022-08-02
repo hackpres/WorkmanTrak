@@ -10,14 +10,16 @@ class  Database {
     }
 
     connect() {
-        if (!this.establishedConnection) {
-            this.establishedConnection = this.connection.connect(function(err) {
+        if (this.establishedConnection === null) {
+            this.establishedConnection = this.connection.connect(function(err, res) {
                 if (err) {
-                    this.dropConnection();
+                    db.dropConnection();
                     throw err;
+                } else {
+                    console.log('Connected to employees_db.');
+                    init()
                 }
-                console.log(res.state, 'Connected to employees_db.')
-                return this.connection
+
             });
         };
     }
@@ -32,11 +34,9 @@ class  Database {
     }
 
     dropConnection() {
-        if (this.establishedConnection) {
-            this.establishedConnection.then(res => {
-                res.end();
-                console.log(res.state, 'Disconnected from employees_db.')
-            });
+        if (this.establishedConnection !== null) {
+            this.connection.end();
+            console.log('Disconnected from employees_db.')
             this.establishedConnection = null;
         };
     }
@@ -50,16 +50,9 @@ const db = new Database({
     database: 'employees_db'
 })
 
-// const connection = mysql.createConnection({
-//     host: 'localhost',
-//     port: 3306,
-//     user: 'root',
-//     password: 'mysqlPassword',
-//     database: 'employees_db'
-// })
+db.connect((err) => {if (err) throw err;})
 
-db.connection.connect((err) => {
-    if (err) throw err;
+const init = () => {
     figlet.text('WorkmanTrak', {
         font: 'ogre',
     }, function(err, data) {
@@ -71,38 +64,46 @@ db.connection.connect((err) => {
         console.log('\x1b[36m');
         console.log(data);
         console.log('\x1b[0m');
-        init();
+        mainMenu();
     })
-});
+};
 
+// mainMenu function
 
-// initilization function
-
-const init = async () => {
+const mainMenu = async () => {
     const answer = await inquirer.prompt({
-        name: 'initChoice',
+        name: 'Choice',
         type: 'list',
         message: 'What would you like to do?',
         choices: [
             'View All Employees',
             'Add Employee',
+            'View Employees by manager',
             'Update Employee Role',
+            'Update Manager Role',
             'View All Roles',
             'Add Role',
             'View All Departments',
             'Add Department',
+            'View Employees by Department',
             'Exit WorkmanTrak'
         ]
     }).then(results => {
-        switch (results.initChoice) {
+        switch (results.Choice) {
             case 'View All Employees':
                 viewEmployees();
                 break;
             case 'Add Employee':
                 addEmployee();
                 break;
+            case 'View Employees by manager':
+                viewByManager();
+                break;
             case 'Update Employee Role':
                 updateRoles();
+                break;
+            case 'Update Manager Role':
+                updateManagers();
                 break;
             case 'View All Roles':
                 viewRoles();
@@ -115,6 +116,9 @@ const init = async () => {
                 break;
             case 'Add Department':
                 addDept();
+                break;
+            case 'View Employees by Department':
+                viewByDept();
                 break;
             case 'Exit WorkmanTrak':
                 quit();
@@ -131,132 +135,16 @@ const quit = () => {
         message: 'Are you sure you want to quit?'
         }).then(results => {
             if (results.quit === true) {
-                process.exit(0);
+                db.dropConnection();
             } else {
-                init();
+                mainMenu();
             }
         }
     );
 }
 
-// Convenience Arrays
+// Helper Functions
 
-// let deptChoices = uniqueDepts();
-// let roleChoices = connection.query(`SELECT role_title FROM roles;`);
-// let empChoices = uniqueEmployees();
-// let manRoleChoices = UniqueManRoles();
-// let managerChoices = uniqueManagers();
-// let fullNames = getFullNames();
-
-// Convenience Functions
-
-// async function uniqueDepts() {
-//     await connection.query(`SELECT department_name FROM departments;`,
-//         function (err, res) {
-//             if (err) throw err;
-//             return res.map(depts => depts.department_name);
-//         }
-//     )
-// }
-// function uniqueRoles() {
-//     connection.query(`SELECT role_title FROM roles;`,
-//         function (err, res) {
-//             if (err) throw err;
-//             return res
-//         }
-//     )
-// }
-// function uniqueEmployees() {
-//     connection.query(`SELECT first_name, last_name FROM employees;`,
-//     function (err, res) {
-//         if (err) throw err;
-//         let Choices = [];
-//         let full = [];
-//         let first = [];
-//         let last = [];
-//         res.map(name => first.push(name.first_name));
-//         res.map(name => last.push(name.last_name));
-//         first.map((name, i) => {
-//             full.push(`${name} ${last[i]}`)
-//         })
-//         full.forEach((name) => {
-//             if (!Choices.includes(name)) {
-//                 Choices.push(name);
-//             }
-//         })
-//         return Choices
-//     })
-// }
-// function UniqueManRoles() {
-//     connection.query(`
-//         SELECT role_title
-//         FROM employees
-//         LEFT JOIN roles ON employees.role_id = roles.id
-//         WHERE employees.employee_id IN (SELECT employees.manager_id FROM employees);`,
-//         function (err, res) {
-//             if (err) throw err;
-//             return res.map(roles => roles.role_title);
-//         })
-// }
-// function uniqueManagers() {
-//     connection.query(`
-//         SELECT e.employee_id AS Emp_ID, e.first_name AS Employee_first, e.last_name AS Employee_last, m.role_id AS Mgr_id, m.first_name AS Manager_first, m.last_name AS Manager_last
-//         FROM employees e
-//         JOIN employees m 
-//         ON (e.manager_id = m.employee_id);`,
-//         function (err, res) {
-//             if (err) throw err; 
-//             let Choices = [];
-//             let managersFirst = res.map(manager => manager.Manager_first);
-//             let managersLast = res.map(manager => manager.Manager_last);
-//             let managersFull = [];
-//             managersFirst.map((name, i) => {
-//                 managersFull.push(`${name} ${managersLast[i]}`)
-//             })
-//             managersFull.forEach((name) => {
-//                 if (!Choices.includes(name)) {
-//                     Choices.push(name);
-//                 }
-//             })
-//             Choices.unshift('None');
-//             return Choices
-//         }
-//     )
-// }
-// function getFullNames() {
-//     connection.query(`
-//         SELECT employees.role_id, roles.role_title, employees.first_name, employees.last_name, employees.manager_id
-//         FROM roles
-//         JOIN employees ON roles.id = employees.role_id;`,
-//         function (err, res) {
-//             if (err) throw err;
-//             let fullnames = [];
-//             let employeeFirstNames = res.map(first => first.first_name);
-//             let employeeLastNames = res.map(last => last.last_name);
-//             employeeFirstNames.map((name, i) => {
-//                 fullnames.push(`${name} ${employeeLastNames[i]}`)
-//             })
-//             return fullnames
-//         }
-//     )
-// }
-// function getSelectedFullnameID(fullname) {
-//     let selectedName = [];
-//     let selectedFirst = [];
-//     let selectedLast =[];
-//     selectedName = fullname.split(' ');
-//     selectedFirst = checkedName[0];
-//     selectedLast = checkedName[1];
-//     connection.query(`SELECT * FROM employees WHERE ? AND ?;`,
-//         [{ first_name: selectedFirst },
-//         { last_name: selectedLast }],
-//         function (err, res) {
-//             if (err) throw err;
-//             let nameID = res[0].role_id;
-//             return nameID
-//         }
-//     )
-// }
 function validateString(input) {
     if ((input.trim() != "") && (input.trim().length <= 30)) {
         return true
@@ -264,6 +152,61 @@ function validateString(input) {
         console.log('\x1b[31m');
         console.log(`Please input a valid name fewer than 30 characters.`);
         console.log('\x1b[0m');
+    }
+}
+const handleUnmanaged = async (name, id) => {
+    let unmanaged = await db.query(`SELECT employee_id, CONCAT(first_name, " ", last_name) AS fullname FROM employees WHERE manager_id = ?`, [id]);
+    let managerChoices = await db.query(`SELECT employee_id, CONCAT(first_name, " ", last_name) AS Manager FROM employees`);
+    if (unmanaged.length != 0) {
+        console.log('\x1b[31m', `Changing ${name}'s role potentially left one or more employees with an inaccurate manager.`, '\x1b[0m')
+        inquirer.prompt([
+            {
+                name: 'confirm',
+                type: 'confirm',
+                message: `Would you like to update potentially unmanaged employees?`
+            },
+            {
+                name: `employee`,
+                type: `list`,
+                message: `Which employee would you like to update?`,
+                choices: unmanaged.map(name => name.fullname),
+                when: function( answers ) {
+                    return !!answers.confirm;
+                }
+            }
+        ]).then(results => {
+            if (results.confirm) {
+                inquirer.prompt([
+                    {
+                        name: `isManager`,
+                        type: `confirm`,
+                        message: `Does the employee work under a manager?`,
+                        default: true
+                    },
+                    {
+                        name: `manager`,
+                        type: `list`,
+                        message: `Who is the manager for this employee's new role?`,
+                        choices: managerChoices.map(name => name.Manager),
+                        when: function( answers ) {
+                            return !!answers.isManager;
+                        }
+                    }
+                ]).then(results2 => {
+                    let unmanagedID = unmanaged.find(employee => employee.fullname === results.employee).employee_id;
+                    let managerID = managerChoices.find(manager => manager.Manager === results2.manager).employee_id;
+                    if (results2.manager != undefined) {
+                        db.query(`UPDATE employees SET manager_id = ? WHERE employee_id = ?`, [managerID, unmanagedID]);
+                        console.log('\x1b[33m', `${results.employee} now reporting to ${results2.manager}, '\x1b[0m'`);
+                        handleUnmanaged(name, id);
+                    }
+                })
+            } else {
+                mainMenu();
+            }
+        })
+    } else {
+        mainMenu();
     }
 }
 
@@ -279,7 +222,7 @@ const viewEmployees = async () => {
         function (err, res) {
             if (err) throw err;
             console.table(res);
-            init();
+            mainMenu();
         }
     )
 }
@@ -292,7 +235,7 @@ const viewRoles = async () => {
         function (err, res) {
             if (err) throw err;
             console.table(res);
-            init();
+            mainMenu();
         }
     )
 }
@@ -304,10 +247,49 @@ const viewDepts = async () => {
         function (err, res) {
             if (err) throw err;
             console.table(res);
-            init();
+            mainMenu();
         }
     )
 }
+    //***Bonus
+const viewByManager = async () => {
+    let managers = await db.query(`SELECT DISTINCT m.role_id AS Mgr_id, CONCAT(m.first_name, " ", m.last_name) AS Manager FROM employees e JOIN employees m WHERE e.manager_id IN (m.employee_id);`)
+    inquirer.prompt([
+        {
+            name: `manager`,
+            type: `list`,
+            message: `View employees under which manager?`,
+            choices: managers.map(name => name.Manager)
+        }
+    ]).then( async results => {
+        let managerID = managers.find(name => name.Manager === results.manager).Mgr_id;
+        let employees = await db.query(`SELECT employee_id, CONCAT(first_name, " ", last_name) AS fullname FROM employees WHERE manager_id = ?`, [managerID]);
+        console.table(employees);
+        mainMenu();
+    });
+}
+    //***Bonus
+const viewByDept = async () => {
+    let depts = await db.query(`SELECT * FROM departments ORDER BY departments.id;`);
+    inquirer.prompt([
+        {
+            name: `dept`,
+            type: `list`,
+            message: `View employees from which department?`,
+            choices: depts.map(dept => dept.department_name)
+        }
+    ]).then( async results => {
+        let employees = await db.query(`
+        SELECT employee_id AS ID, CONCAT(first_name, " ", last_name) AS Employee, role_title AS Title
+        FROM departments
+        JOIN roles ON departments.id = roles.department_id
+        JOIN employees ON roles.id = employees.role_id
+        WHERE department_name = ?;`, [results.dept]);
+        console.table(employees);
+        mainMenu();
+    })
+}
+
 
 // Adds
 
@@ -354,7 +336,7 @@ const addEmployee = async () => {
                     }
                 )
                 console.log('\x1b[33m', `${results.employeeFirst} ${results.employeeLast} add as a ${results.employeeRole}`, '\x1b[0m');
-                init()
+                mainMenu()
             } else {
                 db.query('INSERT INTO employees SET ?;',
                     {
@@ -365,7 +347,7 @@ const addEmployee = async () => {
                     }
                 )
                 console.log('\x1b[33m', `${results.employeeFirst} ${results.employeeLast} added as a ${results.employeeRole} reporting to ${results.manager}`, '\x1b[0m');
-                init()
+                mainMenu()
             }
         }
     )
@@ -409,7 +391,7 @@ const addRole = async () => {
                 }
             )
             console.log('\x1b[33m', `${results.newRole} add under department: ${results.department}`, '\x1b[0m');
-            init()
+            mainMenu()
         }
     )
 }
@@ -425,11 +407,11 @@ const addDept = () => {
             { department_name: results.newDept }
         )
         console.log('\x1b[33m', `${results.newDept} added to departments.`, '\x1b[0m');
-        init();
+        mainMenu();
     })
 }
 
-// //  Updates
+//  Updates
 
 const updateRoles = async () => {
     let empChoices = await db.query(`SELECT employee_id, CONCAT(first_name, " ", last_name) AS fullname FROM employees`);
@@ -472,144 +454,69 @@ const updateRoles = async () => {
             if (results.manager != undefined) {
                 db.query(`UPDATE employees SET role_id = ?, manager_id = ? WHERE employee_id = ?`, [roleID, managerID, empID]);
                 console.log('\x1b[33m', `New role ${results.newRole} confirmed for ${results.employee}., '\x1b[0m'`);
-                init();
+                mainMenu();
             } else {
                 db.query(`UPDATE employees SET role_id = ?, manager_id = null WHERE ?`, [roleID, empID]);
                 console.log('\x1b[33m', `New role ${results.newRole} confirmed for ${results.employee}., '\x1b[0m'`);
-                init();
+                mainMenu();
             }
         } else {
-            init()
+            mainMenu()
         }
     })
 }
-//         let checkedName = results.employee.split(' ')
-//         let checkedFirst = checkedName[0];
-//         let checkedLast = checkedName[1];
-//         let selectedManagerID;
-//         connection.query(`SELECT * FROM employees WHERE ? AND ?;`,
-//             [{ first_name: checkedFirst },
-//             { last_name: checkedLast }],
-//             function (err, res) {
-//                 if (err) throw err;
-//                 selectedManagerID = res[0].role_id;
-//                 if (results.isManager) {
-//                     connection.query(`UPDATE employees SET ? WHERE ? AND ?;`,
-//                         [{ manager_id: selectedManagerID },
-//                         { first_name: checkedFirst},
-//                         { last_name: checkedLast }]
-//                     )
-//                 }
-//                 connection.query(`
-//                     SELECT role_title, id
-//                     FROM roles
-//                     WHERE ?`,
-//                     { role_title: results.newRole },
-//                     function(err, res) {
-//                         if (err) throw err;
-//                         let checkedID = res[0].id
-//                         connection.query(`UPDATE employees SET ? WHERE ? AND ?;`,
-//                             [{ role_id: checkedID },
-//                             { first_name: checkedFirst },
-//                             { last_name: checkedLast }]
-//                         )
-//                         console.log();
-//                         console.log('\x1b[33m', `New role ${results.newRole} confirmed for ${checkedFirst} ${checkedLast}., '\x1b[0m'`);
-//                         console.log();
-//                         if (results.manager !== 'None') {
-//                             let selectedManagerID;
-//                             connection.query(`SELECT * FROM employees WHERE ? AND ?`,
-//                                 [{ first_name: results.employeeFirst },
-//                                 { last_name: results.employeeLast}],
-//                                 function (err, res) {
-//                                     if (err) throw err;
-//                                     selectedManagerID = res.role_id
-//                                 }
-//                             )
-//                             connection.query(`UPDATE employees SET ? WHERE ? AND ?;`,
-//                                 [{ manager_id: selectedManagerID },
-//                                 { first_name: checkedFirst },
-//                                 { last_name: checkedLast }]
-//                             )
-//                             init();
-//                         } else {
-//                             connection.query(`UPDATE employees SET ? WHERE ? AND ?;`,
-//                                 [{ manager_id: null },
-//                                 { first_name: results.employeeFirst },
-//                                 { last_name: results.employeeLast }]
-//                             )
-//                             init();
-//                         }
-//                     }
-//                 )
-//             }
-//         )
-//     })
-// };
 
-// //     //***BONUS
-// const updateManagers = () => {
-//     inquirer.prompt([
-//         {
-//             name: `selectedManager`,
-//             type: `list`,
-//             message: `Which manager would you like to update?`,
-//             choices: managerChoices
-//         },
-//         {
-//             name: `isManager`,
-//             type: `confirm`,
-//             message: `Does the employee work under a manager?`,
-//             default: true
-//         },
-//         {
-//             name: `manager`,
-//             type: `list`,
-//             message: `Who is the manager for this employee's new role?`,
-//             choices: managerChoices,
-//             when: function( answers ) {
-//                 return !!answers.isManager;
-//             }
-//         },
-//         {
-//             name: `role`,
-//             type: `list`,
-//             message: `What is this managers role?`,
-//             choices: manRoleChoices
-//         }]
-//     ).then(results => {
-//         let nameResult = results.selectedManager;
-//         let newRoleID;
-//         getSelectedFullnameID(nameResult);
-//         connection.query(`SELECT * FROM employees WHERE ? AND ?;`,
-//             [{ first_name: selectedFirst },
-//             { last_name: selectedLast }],
-//             function (err, res) {
-//                 if (err) throw err;
-//                 selectedName = [];
-//                 selectedFirst;
-//                 selectedLast;
-                
-//             })
-//                 // if (results.isManager) {
-//                 //     let checkedManager = results.manager.split(' ');
-//                 //     let checkedManagerFirst = checkedManager[0];
-//                 //     let checkedManagerLast = checkedManager[1];
-//                 //     let checkedManagerID;
-//                 //     connection.query(`SELECT * FROM employees WHERE ? AND ?;`,
-//                 //     [{ first_name: checkedManagerFirst },
-//                 //     { last_name: checkedManagerLast }],
-//                 //     function (err, res) {
-//                 //         if (err) throw err;
-//                 //         checkedManagerID = res[0].role_id;
-//                 //     })
-//                 //         [{ manager_id: selectedManagerID },
-//                 //         { first_name: checkedFirst},
-//                 //         { last_name: checkedLast }]
-//                 //     )
-//                 // } else {
-
-//                 // }
-//         }
-//     )
-// }
+     //***BONUS
+const updateManagers = async () => {
+    let managerChoices = await db.query(`SELECT DISTINCT m.role_id AS Mgr_id, CONCAT(m.first_name, " ", m.last_name) AS Manager FROM employees e JOIN employees m WHERE e.manager_id IN (m.employee_id);`);
+    managerChoices.push({ Mgr_id: null, Manager: 'Cancel' });
+    let empChoices = await db.query(`SELECT employee_id, CONCAT(first_name, " ", last_name) AS fullname FROM employees`);
+    let roleChoices = await db.query(`SELECT id, role_title FROM roles;`);
+    inquirer.prompt([
+        {
+            name: `selectedManager`,
+            type: `list`,
+            message: `Which manager would you like to update?`,
+            choices: managerChoices.map(name => name.Manager)
+        },
+        {
+            name: `isManager`,
+            type: `confirm`,
+            message: `Does the employee work under a manager?`,
+            default: true
+        },
+        {
+            name: `manager`,
+            type: `list`,
+            message: `Who is the manager for this employee's new role?`,
+            choices: empChoices.map(name => name.fullname),
+            when: function( answers ) {
+                return !!answers.isManager;
+            }
+        },
+        {
+            name: `role`,
+            type: `list`,
+            message: `What is this managers role?`,
+            choices: roleChoices.map(role => role.role_title)
+        }]
+    ).then(results => {
+        if (results.selectedManager != 'Cancel') {
+            let empID = managerChoices.find(name => name.Manager === results.selectedManager).Mgr_id;
+            let managerID = empChoices.find(manager => manager.fullname === results.manager).employee_id;
+            let roleID = roleChoices.find(role => role.role_title === results.role).id;
+            if (results.manager != undefined) {
+                db.query(`UPDATE employees SET role_id = ?, manager_id = ? WHERE employee_id = ?`, [roleID, managerID, empID]);
+                console.log('\x1b[33m', `New role ${results.role} confirmed for ${results.selectedManager}., '\x1b[0m'`);
+                handleUnmanaged(results.selectedManager, empID);
+            } else {
+                db.query(`UPDATE employees SET role_id = ?, manager_id = null WHERE ?`, [roleID, empID]);
+                console.log('\x1b[33m', `New role ${results.role} confirmed for ${results.selectedManager}., '\x1b[0m'`);
+                handleUnmanaged(results.selectedManager, empID);
+            }
+            
+        } else {
+            mainMenu()
+        }
+    })
+}
