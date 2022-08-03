@@ -1,6 +1,6 @@
 const mysql = require('mysql2');
 const figlet = require('figlet');
-const init = require('./index');
+const init = require('./app');
 
 const connection = mysql.createConnection({
     host: 'localhost',
