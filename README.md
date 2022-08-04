@@ -15,8 +15,9 @@ WorkmanTrak is a node application for maintaining a companies employee database.
 <img src="./assets/images/WorkmanTrak.png" width="700"/>
 <img src="./assets/images/menu.png" width="700"/>
 <img src="./assets/images/employeesTable.png" width="700"/>
-<img src="./assets/images/salarySales.png" width="700"/><br/>
-
+<img src="./assets/images/salarySales.png" width="700"/>
+<img src="./assets/images/employeeDelete.png" width="700"/>
+<img src="./assets/images/roleDelete.png" width="700"/><br/>
 
 ## Table of Contents
 
