@@ -3,6 +3,10 @@
 
 ![license badge](https://img.shields.io/badge/license-mit-brightgreen)
 
+## Demo Video
+
+<a href="https://drive.google.com/file/d/1_eFJa3fwhJRBgNS-unIF89niOgVlmrm4/view?usp=sharing" title="WorkmanTrak Demo"><img src="./assets/images/WorkmanTrak.png" alt="Title image for WorkmanTrak" /><a>
+
 ## Description
 WorkmanTrak is a node application for maintaining a companies employee database.
 
@@ -12,7 +16,6 @@ WorkmanTrak is a node application for maintaining a companies employee database.
 
     The development of WorkmanTrak was a bit arduous. It has certainly been the most challenging application I have built to date. Understanding and properly querying databases is such a useful skill, but it takes time to really master!
 
-<img src="./assets/images/WorkmanTrak.png" width="700"/>
 <img src="./assets/images/menu.png" width="700"/>
 <img src="./assets/images/employeesTable.png" width="700"/>
 <img src="./assets/images/salarySales.png" width="700"/>
