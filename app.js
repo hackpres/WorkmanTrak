@@ -68,24 +68,25 @@ const init = () => {
 // mainMenu function
 
 const mainMenu = async () => {
-    const answer = await inquirer.prompt({
+    await inquirer.prompt({
         name: 'Choice',
         type: 'list',
         message: 'What would you like to do?',
         choices: [
-            'View All Employees',
-            'Add Employee',
-            'View Employees by manager',
-            'Update Employee Role',
-            'Update Manager Role',
-            'View All Roles',
-            'Add Role',
-            'Delete Role',
             'View All Departments',
-            'Add Department',
-            'View Employees by Department',
             'View Department Salary',
+            'View All Employees',
+            'View Employees by Department',
+            'View Employees by manager',
+            'View All Roles',
+            'Add Department',
+            'Add Role',
+            'Add Employee',
+            'Update Manager Role',
+            'Update Employee Role',
             'Delete Department',
+            'Delete Role',
+            'Delete Employee',
             'Exit WorkmanTrak'
         ]
     }).then(results => {
@@ -128,6 +129,9 @@ const mainMenu = async () => {
                 break;
             case 'Delete Department':
                 deleteDept();
+                break;
+            case 'Delete Employee':
+                deleteEmployee();
                 break;
             case 'Exit WorkmanTrak':
                 quit();
@@ -346,63 +350,68 @@ const handleRoleDELETE = async (name, id) => {
         ]).then(async results => {
             if (results.confirm) {
                 let associateID = associates.find(emp => emp.Employee === results.employee).employee_id;
-                let managerID = managerChoices.find(manager => manager.Manager === results.manager).employee_id;
-                let roleID = roleChoices.find(role => role.role_title === results.role).id;
                 let unmanaged = await db.query(`SELECT employee_id, CONCAT(first_name, " ", last_name) AS fullname FROM employees WHERE manager_id = ?`, [associateID]);
-                let unmanagedEmployees = unmanaged.map(name => name.fullname) 
-                console.log('\x1b[31m', `Changing ${results.employee}'s role potentially left one or more employees with an inaccurate manager.`, '\x1b[0m');
-                unmanagedEmployees.forEach(async (employee, index) => {
-                    console.log('\x1b[31m', `Updating role for ${employee}.`, '\x1b[0m')
-                    let managerChoices = await db.query(`SELECT employee_id, CONCAT(first_name, " ", last_name) AS Manager FROM employees`);
-                    let roleChoices = await db.query(`SELECT roles.id, role_title FROM roles JOIN employees ON roles.id = employees.employee_id WHERE role_title NOT LIKE ?;`, [name]);
-                    inquirer.prompt([
-                        {
-                            name: `isManager`,
-                            type: `confirm`,
-                            message: `Does the employee work under a manager?`,
-                            default: true
-                        },
-                        {
-                            name: `manager`,
-                            type: `list`,
-                            message: `Who is the manager for this employee's new role?`,
-                            choices: managerChoices.map(name => name.Manager),
-                            when: function( answers ) {
-                                return !!answers.isManager;
+                let unmanagedEmployees = unmanaged.map(name => name.fullname);
+                if (unmanagedEmployees.length != 0) {
+                    console.log('\x1b[31m', `Changing ${results.employee}'s role potentially left one or more employees with an inaccurate manager.`, '\x1b[0m');
+                    await unmanagedEmployees.forEach(async (employee, index) => {
+                        console.log('\x1b[31m', `Updating role for ${employee}.`, '\x1b[0m')
+                        let managerChoices = await db.query(`SELECT employee_id, CONCAT(first_name, " ", last_name) AS Manager FROM employees`);
+                        let roleChoices = await db.query(`SELECT roles.id, role_title FROM roles JOIN employees ON roles.id = employees.employee_id WHERE role_title NOT LIKE ?;`, [name]);
+                        await inquirer.prompt([
+                            {
+                                name: `isManager`,
+                                type: `confirm`,
+                                message: `Does the employee work under a manager?`,
+                                default: true
+                            },
+                            {
+                                name: `manager`,
+                                type: `list`,
+                                message: `Who is the manager for this employee's new role?`,
+                                choices: managerChoices.map(name => name.Manager),
+                                when: function( answers ) {
+                                    return !!answers.isManager;
+                                }
+                            },
+                            {
+                                name: `role`,
+                                type: `list`,
+                                message: `What is the employees new role?`,
+                                choices: roleChoices.map(role => role.role_title)
                             }
-                        },
-                        {
-                            name: `role`,
-                            type: `list`,
-                            message: `What is the employees new role?`,
-                            choices: roleChoices.map(role => role.role_title)
-                        }
-                    ]).then(async results2 => {
-                        let unmanaged = await db.query(`SELECT employee_id, CONCAT(first_name, " ", last_name) AS fullname FROM employees WHERE manager_id = ?`, [associateID]);
-                        let unmanagedID = unmanaged[0].employee_id;
-                        let managerID = managerChoices.find(manager => manager.Manager === results2.manager).employee_id;
-                        let roleID = roleChoices.find(name => name.role_title === results2.role).id
-                        if (results2.manager != undefined) {
-                            db.query(`UPDATE employees SET role_id = ?, manager_id = ? WHERE employee_id = ?`, [roleID, managerID, unmanagedID]);
-                            console.log('\x1b[33m', `${employee} now reporting to ${results2.manager}`, '\x1b[0m');
-                            if (index === unmanagedEmployees.length - 1) {
-                                db.query(`DELETE FROM employees WHERE role_id = ?;`, [id]);
-                                db.query(`DELETE FROM roles WHERE id = ?;`, [id]);
-                                console.log('\x1b[33m', `${name} has been deleted.`, '\x1b[0m');
-                                mainMenu();
+                        ]).then(async results2 => {
+                            let unmanaged = await db.query(`SELECT employee_id, CONCAT(first_name, " ", last_name) AS fullname FROM employees WHERE manager_id = ?`, [associateID]);
+                            let unmanagedID = unmanaged[0].employee_id;
+                            let managerID = managerChoices.find(manager => manager.Manager === results2.manager).employee_id;
+                            let roleID = roleChoices.find(name => name.role_title === results2.role).id
+                            if (results2.manager != undefined) {
+                                db.query(`UPDATE employees SET role_id = ?, manager_id = ? WHERE employee_id = ?`, [roleID, managerID, unmanagedID]);
+                                console.log('\x1b[33m', `${employee} now reporting to ${results2.manager}`, '\x1b[0m');
+                                if (index === unmanagedEmployees.length - 1) {
+                                    db.query(`DELETE FROM employees WHERE role_id = ?;`, [id]);
+                                    db.query(`DELETE FROM roles WHERE id = ?;`, [id]);
+                                    console.log('\x1b[33m', `${name} has been deleted.`, '\x1b[0m');
+                                    mainMenu();
+                                }
+                            } else {
+                                db.query(`UPDATE employees SET role_id = ?, manager_id = null WHERE employee_id = ?`, [roleID, unmanagedID]);
+                                console.log('\x1b[33m', `${employee}'s role has been updated as: ${results.role}`, '\x1b[0m');
+                                if (index === unmanagedEmployees.length - 1) {
+                                    db.query(`DELETE FROM employees WHERE role_id = ?;`, [id]);
+                                    db.query(`DELETE FROM roles WHERE id = ?;`, [id]);
+                                    console.log('\x1b[33m', `${name} has been deleted.`, '\x1b[0m');
+                                    mainMenu();
+                                }
                             }
-                        } else {
-                            db.query(`UPDATE employees SET role_id = ?, manager_id = null WHERE employee_id = ?`, [roleID, unmanagedID]);
-                            console.log('\x1b[33m', `${employee}'s role has been updated as: ${results.role}`, '\x1b[0m');
-                            if (index === unmanagedEmployees.length - 1) {
-                                db.query(`DELETE FROM employees WHERE role_id = ?;`, [id]);
-                                db.query(`DELETE FROM roles WHERE id = ?;`, [id]);
-                                console.log('\x1b[33m', `${name} has been deleted.`, '\x1b[0m');
-                                mainMenu();
-                            }
-                        }
+                        })
                     })
-                })
+                } else {
+                    db.query(`DELETE FROM employees WHERE role_id = ?;`, [id]);
+                    db.query(`DELETE FROM roles WHERE id = ?;`, [id]);
+                    console.log('\x1b[33m', `${name} has been deleted.`, '\x1b[0m');
+                    mainMenu();
+                }
             } else {
                 mainMenu();
             }
@@ -410,6 +419,65 @@ const handleRoleDELETE = async (name, id) => {
     } else {
         db.query(`DELETE FROM roles WHERE id = ?;`, [id]);
         console.log('\x1b[33m', `${name} has been deleted.`, '\x1b[0m');
+        mainMenu();
+    }
+}
+const handleEmployeeDELETE = async (name, id) => {
+    let associates = await db.query(`SELECT employee_id, CONCAT(first_name, " ", last_name) AS Employee FROM employees WHERE manager_id = ?;`, [id]);
+    if (associates.length != 0) {
+        let associateNames = associates.map(emp => emp.Employee)
+        associateNames.forEach(async (employee, index) => {
+            console.log('\x1b[31m', `Updating role for ${employee}.`, '\x1b[0m')
+            let managerChoices = await db.query(`SELECT employee_id, CONCAT(first_name, " ", last_name) AS Manager FROM employees`);
+            let roleChoices = await db.query(`SELECT roles.id, role_title FROM roles JOIN employees ON roles.id = employees.employee_id;`);
+            inquirer.prompt([
+                {
+                    name: `isManager`,
+                    type: `confirm`,
+                    message: `Does the employee work under a manager?`,
+                    default: true
+                },
+                {
+                    name: `manager`,
+                    type: `list`,
+                    message: `Who is the manager for this employee's new role?`,
+                    choices: managerChoices.map(name => name.Manager),
+                    when: function( answers ) {
+                        return !!answers.isManager;
+                    }
+                },
+                {
+                    name: `role`,
+                    type: `list`,
+                    message: `What is the employees new role?`,
+                    choices: roleChoices.map(role => role.role_title)
+                }
+            ]).then(async results => {
+                let associateID = associates.find(emp => emp.Employee === employee).employee_id;
+                let managerID = managerChoices.find(manager => manager.Manager === results.manager).employee_id;
+                let roleID = roleChoices.find(name => name.role_title === results.role).id
+                if (results.manager != undefined) {
+                    db.query(`UPDATE employees SET role_id = ?, manager_id = ? WHERE employee_id = ?`, [roleID, managerID, associateID]);
+                    console.log('\x1b[33m', `${employee} now reporting to ${results.manager}`, '\x1b[0m');
+                    if (index === associateNames.length - 1) {
+                        db.query(`DELETE FROM employees WHERE role_id = ?;`, [id]);
+                        console.log('\x1b[33m', `Deleted: ${name}.`, '\x1b[0m');
+                        mainMenu();
+                    }
+                } else {
+                    db.query(`UPDATE employees SET role_id = ?, manager_id = null WHERE employee_id = ?`, [roleID, associateID]);
+                    console.log('\x1b[33m', `${employee}'s role has been updated as: ${results.role}`, '\x1b[0m');
+                    if (index === associateNames.length - 1) {
+                        db.query(`DELETE FROM employees WHERE role_id = ?;`, [id]);
+                        console.log('\x1b[33m', `Deleted: ${name}.`, '\x1b[0m');
+                        mainMenu();
+                    }
+                }
+            });
+        });
+    } else {
+        db.query(`DELETE FROM employees WHERE role_id = ?;`, [id]);
+        console.log('\x1b[33m', `Deleted: ${name}.`, '\x1b[0m');
         mainMenu();
     }
 }
@@ -647,46 +715,50 @@ const updateRoles = async () => {
             type: `list`,
             message: `Which employee would you like to update?`,
             choices: empChoices.map(name => name.fullname)
-        },
-        {
-            name: `isManager`,
-            type: `confirm`,
-            message: `Does the employee work under a manager?`,
-            default: true
-        },
-        {
-            name: `manager`,
-            type: `list`,
-            message: `Who is the manager for this employee's new role?`,
-            choices: managerChoices.map(name => name.Manager),
-            when: function( answers ) {
-                return !!answers.isManager;
-            }
-        },
-        {
-            name: `newRole`,
-            type: `list`,
-            message: `Which role would you like to assign to the selected employee?`,
-            choices: roleChoices.map(role => role.role_title)
-        }]
-    ).then(results => {
+        }
+    ]).then(results => {
         if (results.employee != 'Cancel') {
-            let empID = empChoices.find(name => name.fullname === results.employee).employee_id;
-            let managerID = managerChoices.find(manager => manager.Manager === results.manager).employee_id;
-            let roleID = roleChoices.find(role => role.role_title === results.newRole).id;
-            if (results.manager != undefined) {
-                db.query(`UPDATE employees SET role_id = ?, manager_id = ? WHERE employee_id = ?`, [roleID, managerID, empID]);
-                console.log('\x1b[33m', `New role ${results.newRole} confirmed for ${results.employee}.`, '\x1b[0m');
-                mainMenu();
-            } else {
-                db.query(`UPDATE employees SET role_id = ?, manager_id = null WHERE ?`, [roleID, empID]);
-                console.log('\x1b[33m', `New role ${results.newRole} confirmed for ${results.employee}.`, '\x1b[0m');
-                mainMenu();
-            }
+            inquirer.prompt([
+                {
+                    name: `isManager`,
+                    type: `confirm`,
+                    message: `Does the employee work under a manager?`,
+                    default: true
+                },
+                {
+                    name: `manager`,
+                    type: `list`,
+                    message: `Who is the manager for this employee's new role?`,
+                    choices: managerChoices.map(name => name.Manager),
+                    when: function( answers ) {
+                        return !!answers.isManager;
+                    }
+                },
+                {
+                    name: `newRole`,
+                    type: `list`,
+                    message: `Which role would you like to assign to the selected employee?`,
+                    choices: roleChoices.map(role => role.role_title)
+                }]
+            ).then(results2 => {
+                let empID = empChoices.find(name => name.fullname === results.employee).employee_id;
+                let managerID = managerChoices.find(manager => manager.Manager === results2.manager).employee_id;
+                let roleID = roleChoices.find(role => role.role_title === results2.newRole).id;
+                if (results2.manager != undefined) {
+                    db.query(`UPDATE employees SET role_id = ?, manager_id = ? WHERE employee_id = ?`, [roleID, managerID, empID]);
+                    console.log('\x1b[33m', `New role ${results2.newRole} confirmed for ${results.employee}.`, '\x1b[0m');
+                    mainMenu();
+                } else {
+                    db.query(`UPDATE employees SET role_id = ?, manager_id = null WHERE ?`, [roleID, empID]);
+                    console.log('\x1b[33m', `New role ${results2.newRole} confirmed for ${results.employee}.`, '\x1b[0m');
+                    mainMenu();
+                }
+            })
         } else {
-            mainMenu()
+            mainMenu();
         }
     })
+        
 }
 
      //***BONUS
@@ -701,47 +773,49 @@ const updateManagers = async () => {
             type: `list`,
             message: `Which manager would you like to update?`,
             choices: managerChoices.map(name => name.Manager)
-        },
-        {
-            name: `isManager`,
-            type: `confirm`,
-            message: `Does the employee work under a manager?`,
-            default: true
-        },
-        {
-            name: `manager`,
-            type: `list`,
-            message: `Who is the manager for this employee's new role?`,
-            choices: empChoices.map(name => name.fullname),
-            when: function( answers ) {
-                return !!answers.isManager;
-            }
-        },
-        {
-            name: `role`,
-            type: `list`,
-            message: `What is this managers role?`,
-            choices: roleChoices.map(role => role.role_title)
-        }]
-    ).then(results => {
-        if (results.selectedManager != 'Cancel') {
-            let empID = managerChoices.find(name => name.Manager === results.selectedManager).Mgr_id;
-            let managerID = empChoices.find(manager => manager.fullname === results.manager).employee_id;
-            let roleID = roleChoices.find(role => role.role_title === results.role).id;
-            if (results.manager != undefined) {
-                db.query(`UPDATE employees SET role_id = ?, manager_id = ? WHERE employee_id = ?`, [roleID, managerID, empID]);
-                console.log('\x1b[33m', `New role ${results.role} confirmed for ${results.selectedManager}.`, '\x1b[0m');
-                handleUnmanaged(results.selectedManager, empID);
-            } else {
-                db.query(`UPDATE employees SET role_id = ?, manager_id = null WHERE ?`, [roleID, empID]);
-                console.log('\x1b[33m', `New role ${results.role} confirmed for ${results.selectedManager}.`, '\x1b[0m');
-                handleUnmanaged(results.selectedManager, empID);
-            }
-            
-        } else {
-            mainMenu()
         }
-    })
+    ]).then(results => {
+        if (results.selectedManager != 'Cancel') {
+            inquirer.prompt([
+            {
+                name: `isManager`,
+                type: `confirm`,
+                message: `Does the employee work under a manager?`,
+                default: true,
+            },
+            {
+                name: `manager`,
+                type: `list`,
+                message: `Who is the manager for this employee's new role?`,
+                choices: empChoices.map(name => name.fullname),
+                when: function( answers ) {
+                    return !!answers.isManager;
+                }
+            },
+            {
+                name: `role`,
+                type: `list`,
+                message: `What is this managers role?`,
+                choices: roleChoices.map(role => role.role_title)
+            }
+            ]).then(results2 => {
+                let empID = managerChoices.find(name => name.Manager === results.selectedManager).Mgr_id;
+                let managerID = empChoices.find(manager => manager.fullname === results2.manager).employee_id;
+                let roleID = roleChoices.find(role => role.role_title === results2.role).id;
+                if (results2.manager != undefined) {
+                    db.query(`UPDATE employees SET role_id = ?, manager_id = ? WHERE employee_id = ?`, [roleID, managerID, empID]);
+                    console.log('\x1b[33m', `New role ${results2.role} confirmed for ${results.selectedManager}.`, '\x1b[0m');
+                    handleUnmanaged(results.selectedManager, empID);
+                } else {
+                    db.query(`UPDATE employees SET role_id = ?, manager_id = null WHERE ?`, [roleID, empID]);
+                    console.log('\x1b[33m', `New role ${results2.role} confirmed for ${results.selectedManager}.`, '\x1b[0m');
+                    handleUnmanaged(results.selectedManager, empID);
+                }
+            })  
+        } else {
+            mainMenu();
+        }
+    })   
 }
 
     //***BONUS DELETES
@@ -770,7 +844,7 @@ const deleteDept = async () => {
 const deleteRole = async () => {
     console.log('\x1b[31m', `Deleting a Role will require updating employees with said Role as well as any employees managed by that employee`, '\x1b[0m');
     let roleChoices = await db.query(`SELECT id, role_title FROM roles;`);
-    roleChoices.push({ id: null, role_title: 'Cancel'})
+    roleChoices.push({ id: null, role_title: 'Cancel' });
     inquirer.prompt([
     {
         name: `role`,
@@ -789,5 +863,22 @@ const deleteRole = async () => {
 }
 
 const deleteEmployee = async () => {
-
+    console.log('\x1b[31m', `Deleting a manager will require updating employees who report to that manager.`, '\x1b[0m');
+    let empChoices = await db.query(`SELECT employee_id, CONCAT(first_name, " ", last_name) AS fullname FROM employees`);
+    empChoices.push({ employee_id: null, fullname: 'Cancel' });
+    inquirer.prompt([
+        {
+            name: `employee`,
+            type: `list`,
+            message: `Which employee would you like to delete?`,
+            choices: empChoices.map(employee => employee.fullname)
+        }
+    ]).then(results => {
+        if (results.employee != 'Cancel') {
+           let employeeID = empChoices.find(employee => employee.fullname === results.employee).employee_id;
+           handleEmployeeDELETE(results.employee, employeeID);
+        } else {
+            mainMenu();
+        }
+    })
 }
